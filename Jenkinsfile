@@ -40,23 +40,6 @@ pipeline {
     stage('Build Docker Image') {
       steps {
         script {
-          docker.build("${registry}:${env.BUILD_NUMBER}")
-        }
-      }
-    }
-    stage('Push Docker Image') {
-      steps {
-        script {
-          docker.withRegistry('https://registry.hub.docker.com', 'docker_hub') {
-            docker.image("${registry}:${env.BUILD_NUMBER}").push()
-            docker.image("${registry}:${env.BUILD_NUMBER}").push("latest")
-          }
-        }
-      }
-    }
-    stage('Build Docker Image') {
-      steps {
-        script {
           dockerImage = docker.build("${registry}:${env.BUILD_NUMBER}")
         }
       }

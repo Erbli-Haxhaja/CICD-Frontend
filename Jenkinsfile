@@ -54,41 +54,86 @@ pipeline {
         }
       }
     }
-    stage('Deploy to Green Environment') {
+    stages {
+    stage('Build Docker Image') {
       steps {
         script {
-          sh """
-            aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Deploy Green" --parameters commands="
-              docker pull ${registry}:latest && \
-              docker stop ${greenContainerName} || true && \
-              docker rm ${greenContainerName} || true && \
-              docker run -d --name ${greenContainerName} -p 8081:80 ${registry}:latest
-            "
-          """
+          dockerImage = docker.build("${registry}:${env.BUILD_NUMBER}")
+        }
+      }
+    }
+    stage('Push Docker Image') {
+      steps {
+        script {
+          docker.withRegistry('https://registry.hub.docker.com', 'docker_hub') {
+            dockerImage.push()
+            dockerImage.push("latest")
+          }
+        }
+      }
+    }
+    stage('Deploy to Green Environment') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+          string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+        ]) {
+          withEnv(["AWS_DEFAULT_REGION=us-east-1"]) {
+            script {
+              sh """
+                aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
+                aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
+                aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Deploy Green" --parameters commands="
+                  docker pull ${registry}:latest && \
+                  docker stop ${greenContainerName} || true && \
+                  docker rm ${greenContainerName} || true && \
+                  docker run -d --name ${greenContainerName} -p 8081:80 ${registry}:latest
+                "
+              """
+            }
+          }
         }
       }
     }
     stage('Switch Traffic to Green') {
       steps {
-        script {
-          sh """
-            aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Switch to Green" --parameters commands="
-              sed -i 's/${blueContainerName}/${greenContainerName}/' /etc/nginx/conf.d/default.conf && \
-              systemctl reload nginx
-            "
-          """
+        withCredentials([
+          string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+          string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+        ]) {
+          withEnv(["AWS_DEFAULT_REGION=us-east-1"]) {
+            script {
+              sh """
+                aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
+                aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
+                aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Switch to Green" --parameters commands="
+                  sed -i 's/${blueContainerName}/${greenContainerName}/' /etc/nginx/sites-available/default && \
+                  systemctl reload nginx
+                "
+              """
+            }
+          }
         }
       }
     }
     stage('Clean Up Blue Environment') {
       steps {
-        script {
-          sh """
-            aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Clean Up Blue" --parameters commands="
-              docker stop ${blueContainerName} || true && \
-              docker rm ${blueContainerName} || true
-            "
-          """
+        withCredentials([
+          string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+          string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+        ]) {
+          withEnv(["AWS_DEFAULT_REGION=us-east-1"]) {
+            script {
+              sh """
+                aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
+                aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
+                aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Clean Up Blue" --parameters commands="
+                  docker stop ${blueContainerName} || true && \
+                  docker rm ${blueContainerName} || true
+                "
+              """
+            }
+          }
         }
       }
     }

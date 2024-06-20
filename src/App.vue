@@ -9,5 +9,4 @@ import TodoList from "@/components/TodoList.vue";
 </template>
 
 <style scoped>
-
 </style>

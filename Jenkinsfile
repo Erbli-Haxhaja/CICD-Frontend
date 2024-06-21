@@ -19,6 +19,13 @@ pipeline {
       steps {
         checkout scm
       }
+      post {
+        failure {
+          script {
+            sendFailureEmail()
+          }
+        }
+      }
     }
     stage('Linting') {
       steps {
@@ -29,11 +36,25 @@ pipeline {
           }
         }
       }
+      post {
+        failure {
+          script {
+            sendFailureEmail()
+          }
+        }
+      }
     }
     stage('Testing') {
       steps {
         script {
           echo 'Running tests...'
+        }
+      }
+      post {
+        failure {
+          script {
+            sendFailureEmail()
+          }
         }
       }
     }
@@ -43,6 +64,13 @@ pipeline {
           dockerImage = docker.build("${registry}:${env.BUILD_NUMBER}")
         }
       }
+      post {
+        failure {
+          script {
+            sendFailureEmail()
+          }
+        }
+      }
     }
     stage('Push Docker Image') {
       steps {
@@ -50,6 +78,13 @@ pipeline {
           docker.withRegistry('https://registry.hub.docker.com', 'docker_hub') {
             dockerImage.push()
             dockerImage.push("latest")
+          }
+        }
+      }
+      post {
+        failure {
+          script {
+            sendFailureEmail()
           }
         }
       }
@@ -83,7 +118,29 @@ pipeline {
           }
         }
       }
+      post {
+        failure {
+          script {
+            sendFailureEmail()
+          }
+        }
+      }
     }
-
   }
+
+  post {
+    failure {
+      script {
+        sendFailureEmail()
+      }
+    }
+  }
+}
+
+def sendFailureEmail() {
+  emailext (
+    subject: "Pipeline Stage has failed.",
+    body: "The Jenkins pipeline stage has failed. Please check the details.",
+    to: "eeba.haxhaja@gmail.com"
+  )
 }

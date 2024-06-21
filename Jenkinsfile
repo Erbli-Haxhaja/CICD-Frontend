@@ -62,18 +62,19 @@ pipeline {
         ]) {
           withEnv(["AWS_DEFAULT_REGION=us-east-1"]) {
             script {
-              sh """
+              sh '''
                 export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
                 export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-                aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
-                aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
+                aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                aws configure set region $AWS_DEFAULT_REGION
                 aws ssm send-command --instance-ids ${ec2InstanceId} --document-name "AWS-RunShellScript" --comment "Deploy Vue.js App" --parameters commands="
                   docker stop vuejs-frontend || true && \
                   docker rm vuejs-frontend || true && \
                   docker pull ${registry}:latest && \
                   docker run -d --name vuejs-frontend -p 80:80 ${registry}:latest
                 "
-              """
+              '''
             }
           }
         }

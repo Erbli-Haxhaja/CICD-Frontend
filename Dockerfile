@@ -22,7 +22,7 @@ FROM nginx:alpine
 # Copy built files from previous stage to nginx public directory
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Expose port 80
+# Expose port 8080
 EXPOSE 8080
 
 # Start nginx

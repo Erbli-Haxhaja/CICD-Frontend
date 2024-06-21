@@ -67,7 +67,10 @@ pipeline {
                 aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
                 aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
                 aws configure set region $AWS_DEFAULT_REGION
-                
+
+                echo "Validating AWS CLI configuration"
+                aws sts get-caller-identity
+
                 echo "Sending command to EC2 instance to deploy Vue.js app"
                 aws ssm send-command --instance-ids $ec2InstanceId --document-name "AWS-RunShellScript" --comment "Deploy Vue.js App" --parameters commands='
                   docker stop vuejs-frontend || true && \
